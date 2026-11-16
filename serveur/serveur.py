@@ -79,7 +79,9 @@ class Serveur:
     def envoyer_roles(self, espion):
         for id_capteur in IDS:
             role = "espion" if id_capteur == espion else "normal"
-            publier(self.client, topics.role(id_capteur), {"role": role}, retain=True)
+            # Pas de retain : sinon le broker garde le rôle de la partie précédente
+            # et un capteur qui démarre l'affiche comme s'il était encore valable.
+            publier(self.client, topics.role(id_capteur), {"role": role})
 
     def attendre_votes(self):
         """Attend tous les votes (ou le délai), puis ferme la partie."""

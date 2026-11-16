@@ -24,6 +24,8 @@ def creer_client(client_id, on_message, abonnements):
     def _on_message(client, userdata, msg):
         # Ce code tourne dans le thread réseau de paho : une exception qui
         # s'en échappe tue ce thread et le client devient sourd sans le dire.
+        if not msg.payload:      # message vide = effacement d'un message retenu
+            return
         try:
             donnees = json.loads(msg.payload)
         except (json.JSONDecodeError, UnicodeDecodeError):
