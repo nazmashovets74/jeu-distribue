@@ -335,7 +335,9 @@ cd ~/jeu-distribue && ./jeu.sh serveur 10
 | Сервер пишет `pas de vote de : ['2']` | Датчик 2 не запущен или упал | Посмотреть его терминал, перезапустить |
 | Сервер пишет `vote de 2 ignoré : il concerne la partie None` | На RPi старая версия кода | Раздел 5.1: `git pull` |
 | `erreur Open-Meteo` | Нет интернета | Датчик продолжает со своим последним значением, партия не ломается |
-| `stratégie llm en échec` | Ollama не установлен или модель не скачана | `ollama list`, раздел 9 |
+| `stratégie llm impossible : le modèle qwen3:1.7b n'est pas téléchargé` при запуске | На этой RPi нет нужной модели | Выполнить команду из сообщения: `ollama pull qwen3:1.7b` |
+| `stratégie llm impossible : Ollama ne répond pas` при запуске | Ollama не установлен или не запущен | Раздел 9, затем `ollama list` |
+| `stratégie llm en échec (Ollama 404 ...)`, голос `aleatoire (échec llm)` | Модель пропала во время игры или старый код | `ollama list`, `git pull` |
 | `invalid choice` при запуске | Опечатка в id или стратегии | id: 1–4; стратегии: `mediane`, `aleatoire`, `llm` |
 
 ---

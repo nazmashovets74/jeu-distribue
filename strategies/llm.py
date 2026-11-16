@@ -23,6 +23,23 @@ def configurer(url=None, modele=None):
     MODELE = modele or MODELE
 
 
+def verifier():
+    """Au lancement du capteur : Ollama répond et le modèle est téléchargé ?
+
+    Sans ce contrôle, le capteur joue toute la partie puis vote au hasard.
+    Renvoie None si tout va bien, sinon le problème et la commande pour le régler.
+    """
+    try:
+        modeles = [m["name"] for m in requests.get(f"{URL}/api/tags", timeout=5).json()["models"]]
+    except requests.RequestException:
+        return (f"Ollama ne répond pas sur {URL}. Installer : "
+                "curl -fsSL https://ollama.com/install.sh | sh")
+    if MODELE not in modeles:
+        return (f"le modèle {MODELE} n'est pas téléchargé (présents : {modeles or 'aucun'}). "
+                f"Faire : ollama pull {MODELE}")
+    return None
+
+
 def construire_prompt(mon_id, historique, candidats):
     lignes = []
     for i in sorted(historique):
@@ -72,7 +89,8 @@ def choisir_suspect(mon_id, historique):
         # rendent la génération des dizaines de fois plus lente (mesuré : 90 s -> 7 s).
         "options": {"temperature": 0, "num_predict": 200, "num_thread": 3},
     })
-    reponse.raise_for_status()
+    if not reponse.ok:   # Ollama explique l'erreur dans le corps (ex : modèle absent)
+        raise RuntimeError(f"Ollama {reponse.status_code} : {reponse.text.strip()}")
     contenu = json.loads(reponse.json()["message"]["content"])
     suspect = str(contenu["suspect"])
     if suspect not in candidats:

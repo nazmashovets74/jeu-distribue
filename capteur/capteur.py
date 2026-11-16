@@ -139,6 +139,9 @@ def main():
     strategie = strategies.charger(args.strategie)
     if args.strategie == "llm":
         strategie.configurer(modele=args.modele)
+        probleme = strategie.verifier()
+        if probleme:
+            raise SystemExit(f"[capteur-{args.id}] stratégie llm impossible : {probleme}")
 
     capteur = Capteur(args.id, args.strategie, strategie)
     capteur.client.loop_start()   # réception MQTT dans un thread séparé
