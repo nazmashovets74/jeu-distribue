@@ -83,6 +83,16 @@ class Serveur:
             # et un capteur qui démarre l'affiche comme s'il était encore valable.
             publier(self.client, topics.role(id_capteur), {"role": role})
 
+    def effacer_anciens_roles(self):
+        """Efface les rôles restés sur le broker (message vide + retain).
+
+        Ils viennent d'anciennes versions du serveur, et le broker les recharge
+        depuis son disque après une coupure de courant : sans ça, un capteur qui
+        démarre reçoit le rôle d'une vieille partie.
+        """
+        for id_capteur in IDS:
+            self.client.publish(topics.role(id_capteur), b"", qos=1, retain=True)
+
     def attendre_votes(self):
         """Attend tous les votes (ou le délai), puis ferme la partie."""
         complet = self.tous_ont_vote.wait(timeout=DELAI_VOTES)
@@ -160,6 +170,7 @@ def main():
     serveur = Serveur()
     serveur.client.loop_start()   # réseau dans un thread à part
     time.sleep(1)                 # laisser le temps de s'abonner aux votes
+    serveur.effacer_anciens_roles()
     try:
         if nb_parties:
             for partie in range(1, nb_parties + 1):

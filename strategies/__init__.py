@@ -1,7 +1,7 @@
 """Stratégies de vote : chaque module expose choisir_suspect(mon_id, historique) -> str."""
 import importlib
 
-NOMS = ("mediane", "aleatoire", "llm")
+NOMS = ("mediane", "stabilite", "aleatoire", "llm")
 
 
 def charger(nom):
