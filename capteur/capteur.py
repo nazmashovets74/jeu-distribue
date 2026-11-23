@@ -22,6 +22,7 @@ from capteur.espion import fausse_temperature
 # avant de voter (un capteur en retard, ex. Open-Meteo lent, serait jugé sans
 # sa dernière valeur). Au-delà de ce délai, je vote avec ce que j'ai reçu.
 ATTENTE_MAX_AVANT_VOTE = 10   # secondes
+PAUSE_AVANT_VOTE = 3          # s une fois tout reçu : le vote commence après le tour 5 de TOUS
 
 
 def preparer_strategie(nom, modele=None):
@@ -142,7 +143,7 @@ class Capteur:
         -> False si une nouvelle partie a commencé entre-temps (ne pas voter).
         """
         limite = time.monotonic() + ATTENTE_MAX_AVANT_VOTE
-        annonce = False
+        annonce = False   # le message d'attente n'est affiché qu'une fois
         while True:
             with self.verrou:
                 if self.partie != partie:
@@ -151,9 +152,11 @@ class Capteur:
                 manquants = self.manquants()
                 recues = {i: len(self.historique.get(i, [])) for i in manquants}
             if not manquants:
-                if annonce:
-                    self.log("toutes les mesures sont arrivées")
-                return True
+                self.log(f"les {len(CAPTEURS)} capteurs ont fini leurs {NB_TOURS} tours, "
+                         f"vote dans {PAUSE_AVANT_VOTE} s")
+                time.sleep(PAUSE_AVANT_VOTE)
+                with self.verrou:
+                    return self.partie == partie
             if time.monotonic() >= limite:
                 detail = ", ".join(f"capteur {i} ({n}/{NB_TOURS})" for i, n in recues.items())
                 self.log(f"délai de {ATTENTE_MAX_AVANT_VOTE} s dépassé, je vote sans : {detail}")
