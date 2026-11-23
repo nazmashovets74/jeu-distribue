@@ -10,16 +10,7 @@
   <main class="vaisseau">
     <header class="tete">
       <h1>Le jeu de l'espion</h1>
-      <div class="compte">
-        {% if joueur %}
-          <strong>{{ joueur }}</strong>
-          <form method="post" action="{{ url_for('deconnexion') }}">
-            <button class="lien" type="submit">déconnexion</button>
-          </form>
-        {% else %}
-          <a class="lien" href="{{ url_for('connexion') }}">connexion</a>
-        {% endif %}
-      </div>
+      <span class="discret" id="serveur">serveur hors ligne</span>
     </header>
 
     <section class="panneau statut">
@@ -34,25 +25,11 @@
     </section>
 
     <section class="panneau">
-      <h2>Prêts</h2>
-      <div class="prets">
-        <ul class="joueurs" id="joueurs"></ul>
-        {% if joueur %}<button id="bouton-pret" class="bouton" type="button">Prêt</button>{% endif %}
-      </div>
-      <p id="attente" class="discret"></p>
-      <p id="erreur" class="erreur" hidden></p>
-    </section>
-
-    <section class="panneau">
-      <h2>Journal</h2>
+      <h2>Terminal</h2>
       <ol class="journal" id="journal"></ol>
     </section>
   </main>
 
-  <script>
-    window.JOUEUR = {{ joueur|tojson }};
-    window.MES_CAPTEURS = {{ capteurs|tojson }};
-  </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
