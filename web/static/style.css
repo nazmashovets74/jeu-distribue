@@ -44,9 +44,6 @@ code { font-family: var(--mono); font-size: .85em; }
 .tete h1 { font-size: 1.5rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
 .compte { display: flex; gap: 12px; align-items: center; font-size: .9rem; }
 .compte form { margin: 0; }
-.direct { color: var(--discret); font-size: .8rem; display: inline-flex; align-items: center; gap: 6px; }
-.direct::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--jaune); }
-.direct.actif::before { background: var(--vert); }
 .lien { color: var(--cyan); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
 
 /* ---------- Panneaux ---------- */

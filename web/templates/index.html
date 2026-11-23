@@ -11,7 +11,6 @@
     <header class="tete">
       <h1>Le jeu de l'espion</h1>
       <div class="compte">
-        <span id="direct" class="direct">…</span>
         {% if joueur %}
           <strong>{{ joueur }}</strong>
           <form method="post" action="{{ url_for('deconnexion') }}">
@@ -25,7 +24,6 @@
 
     <section class="panneau statut">
       <span id="phase">En attente</span>
-      <span id="serveur" class="discret"></span>
     </section>
 
     <section id="resultat" class="panneau resultat" hidden></section>

@@ -13,9 +13,7 @@ function esc(v) {
 }
 
 function connecter() {
-  const flux = new EventSource("/flux");
-  flux.onopen = () => { $("direct").textContent = "en direct"; $("direct").classList.add("actif"); };
-  flux.onerror = () => { $("direct").textContent = "reconnexion"; $("direct").classList.remove("actif"); };
+  const flux = new EventSource("/flux");   // se reconnecte tout seul si le site redémarre
   flux.onmessage = (e) => { etat = JSON.parse(e.data); dessiner(); };
 }
 
@@ -39,8 +37,6 @@ function dessinerStatut() {
     else phase = `Partie ${etat.partie} · vote ${nbVotes}/${Object.keys(etat.capteurs).length}`;
   }
   $("phase").textContent = phase;
-  const s = etat.serveur;
-  $("serveur").textContent = s.en_ligne ? `serveur : ${s.mode}` : "serveur hors ligne";
 
   const r = etat.resultat;
   $("resultat").hidden = !r;

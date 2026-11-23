@@ -18,6 +18,11 @@ from common.mqtt_client import creer_client, deconnecter, publier
 from capteur.meteo import get_temperature
 from capteur.espion import fausse_temperature
 
+# Après mon 5e tour, j'attends que tous les capteurs aient publié leurs 5 mesures
+# avant de voter (un capteur en retard, ex. Open-Meteo lent, serait jugé sans
+# sa dernière valeur). Au-delà de ce délai, je vote avec ce que j'ai reçu.
+ATTENTE_MAX_AVANT_VOTE = 10   # secondes
+
 
 def preparer_strategie(nom, modele=None):
     """-> (module de la stratégie, None) ou (None, problème expliqué)."""
@@ -124,7 +129,42 @@ class Capteur:
             self.log(f"tour {tour} : {t} °C ({role})")
             # Cadence fixe : un appel Open-Meteo lent ne décale pas les tours suivants.
             time.sleep(max(0.0, debut + tour * INTERVALLE - time.monotonic()))
-        self.voter(partie)
+        if self.attendre_mesures(partie):
+            self.voter(partie)
+
+    def manquants(self):
+        """Capteurs qui n'ont pas encore publié leurs NB_TOURS mesures (sous le verrou)."""
+        return [i for i in CAPTEURS if len(self.historique.get(i, [])) < NB_TOURS]
+
+    def attendre_mesures(self, partie):
+        """Attend les 5 mesures de tout le monde (max ATTENTE_MAX_AVANT_VOTE s).
+
+        -> False si une nouvelle partie a commencé entre-temps (ne pas voter).
+        """
+        limite = time.monotonic() + ATTENTE_MAX_AVANT_VOTE
+        annonce = False
+        while True:
+            with self.verrou:
+                if self.partie != partie:
+                    self.log(f"nouveau start reçu, partie {partie} abandonnée")
+                    return False
+                manquants = self.manquants()
+                recues = {i: len(self.historique.get(i, [])) for i in manquants}
+            if not manquants:
+                if annonce:
+                    self.log("toutes les mesures sont arrivées")
+                return True
+            if time.monotonic() >= limite:
+                detail = ", ".join(f"capteur {i} ({n}/{NB_TOURS})" for i, n in recues.items())
+                self.log(f"délai de {ATTENTE_MAX_AVANT_VOTE} s dépassé, je vote sans : {detail}")
+                return True
+            # Ma propre mesure revient du broker en quelques ms : inutile de l'annoncer.
+            autres = [i for i in manquants if i != self.mon_id]
+            if autres and not annonce:
+                self.log(f"attente des dernières mesures de : {', '.join(autres)} "
+                         f"(max {ATTENTE_MAX_AVANT_VOTE} s)")
+                annonce = True
+            time.sleep(0.2)
 
     def voter(self, partie):
         with self.verrou:
