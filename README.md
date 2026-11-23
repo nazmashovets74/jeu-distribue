@@ -57,9 +57,10 @@ dans la partie suivante.
 
 ## Site web (suivre les parties, « Prêt », stratégies)
 
-Un site Flask, en français, sur RPi A à côté du serveur. Il suit tout en direct
-(mesures, votes, résultat, journal, historique de `docs/parties.jsonl`) et ne
-s'abonne pas à `iot/role/#` : l'espion n'apparaît qu'au résultat.
+Un site Flask, en français et volontairement sobre, sur RPi A à côté du
+serveur : état de la partie, les 4 capteurs (stratégie, vote), les « Prêt » et
+le journal en direct. Il ne s'abonne pas à `iot/role/#` : l'espion n'apparaît
+qu'au résultat.
 
 ```bash
 venv/bin/pip install -r requirements.txt              # Flask, une fois

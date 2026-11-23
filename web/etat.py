@@ -5,7 +5,6 @@ s'abonne PAS à iot/role/#, donc il ne connaît l'espion qu'au résultat.
 Il gère aussi la salle d'attente : quand tous les joueurs sont « Prêt », il
 publie iot/jeu/lancer, que le serveur lancé avec --web attend.
 """
-import json
 import queue
 import threading
 import time
@@ -17,9 +16,7 @@ from config import CAPTEURS, NB_TOURS
 from common import topics
 from common.mqtt_client import creer_client, publier
 
-JOURNAL_PARTIES = "docs/parties.jsonl"   # écrit par le serveur (présent sur RPi A)
 TAILLE_JOURNAL = 300                     # lignes de journal gardées en mémoire
-TAILLE_HISTORIQUE = 50                   # parties affichées
 DELAI_LANCEMENT = 10                     # s sans start après la demande -> on réessaie
 
 # Affiché dans le menu de chaque capteur (même ordre que strategies.NOMS).
@@ -51,7 +48,6 @@ class EtatJeu:
         self.temperatures = {}               # {id: [t1, t2, ...]} de la partie affichée
         self.votes = {}                      # {votant: {"suspect", "strategie"}}
         self.resultat = None
-        self.historique = deque(self.charger_historique(), maxlen=TAILLE_HISTORIQUE)
         self.client = creer_client(
             "web", self.traiter_message,
             [topics.JEU_START, topics.JEU_RESULTAT, topics.TOUTES_TEMPERATURES,
@@ -75,7 +71,6 @@ class EtatJeu:
             "temperatures": self.temperatures,
             "votes": self.votes,
             "resultat": self.resultat,
-            "historique": list(self.historique),
             "journal": list(self.journal),
         }
 
@@ -107,15 +102,17 @@ class EtatJeu:
         """[(texte, ok)] : tout doit être vrai pour lancer une partie."""
         hors_ligne = [i for i, c in self.capteurs.items() if not c["en_ligne"]]
         pas_prets = [n for n in self.comptes if n not in self.prets]
+        # Le texte décrit ce qui bloque (la page affiche la première condition fausse).
+        serveur_ok = self.serveur["en_ligne"] and self.serveur["mode"] == "web"
         return [
-            {"texte": "Serveur lancé avec ./jeu.sh serveur --web",
-             "ok": self.serveur["en_ligne"] and self.serveur["mode"] == "web"},
-            {"texte": "Les 4 capteurs sont en ligne" if not hors_ligne
-             else f"Capteurs hors ligne : {', '.join(hors_ligne)}", "ok": not hors_ligne},
-            {"texte": "Aucune partie en cours", "ok": not self.en_cours},
-            {"texte": "Tous les joueurs sont prêts" if not pas_prets
-             else f"Pas encore prêts : {', '.join(pas_prets)}",
-             "ok": bool(self.comptes) and not pas_prets},
+            {"texte": "serveur prêt" if serveur_ok
+             else "le serveur doit tourner avec ./jeu.sh serveur --web", "ok": serveur_ok},
+            {"texte": "4 capteurs en ligne" if not hors_ligne
+             else f"capteur {', '.join(hors_ligne)} hors ligne", "ok": not hors_ligne},
+            {"texte": "pas de partie en cours" if not self.en_cours else "partie en cours",
+             "ok": not self.en_cours},
+            {"texte": "tout le monde est prêt" if not pas_prets
+             else f"attente de {', '.join(pas_prets)}", "ok": bool(self.comptes) and not pas_prets},
         ]
 
     def changer_pret(self, nom, pret):
@@ -224,7 +221,6 @@ class EtatJeu:
         if d.get("partie") != self.partie:
             return
         self.en_cours, self.resultat = False, d
-        self.historique.appendleft({"date": datetime.now().isoformat(timespec="seconds"), **d})
         gagnant = "des CAPTEURS" if d.get("gagnant") == "capteurs" else "de l'ESPION"
         self._noter(f"Résultat : l'espion était le capteur {d.get('espion')}, désigné : "
                     f"{d.get('designe') or 'personne'} → victoire {gagnant}", "resultat")
@@ -261,15 +257,3 @@ class EtatJeu:
             if self.en_cours:
                 self.en_cours = False
                 self._noter(f"Partie {self.partie} interrompue (serveur arrêté)", "alerte")
-
-    # ================= Historique des parties =================
-    @staticmethod
-    def charger_historique():
-        """Dernières parties de docs/parties.jsonl, la plus récente en premier."""
-        try:
-            with open(JOURNAL_PARTIES, encoding="utf-8") as f:
-                lignes = [json.loads(l) for l in f if l.strip()]
-        except (OSError, json.JSONDecodeError):
-            return []
-        return [{k: v for k, v in p.items() if k != "temperatures"}
-                for p in reversed(lignes[-TAILLE_HISTORIQUE:])]
