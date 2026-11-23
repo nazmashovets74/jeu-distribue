@@ -140,6 +140,7 @@ def main():
     strategie = strategies.charger(args.strategie)
     if args.strategie == "llm":
         strategie.configurer(modele=args.modele)
+        print(f"[capteur-{args.id}] vérification d'Ollama et chargement du modèle...")
         probleme = strategie.verifier()
         if probleme:
             raise SystemExit(f"[capteur-{args.id}] stratégie llm impossible : {probleme}")

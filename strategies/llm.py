@@ -24,19 +24,33 @@ def configurer(url=None, modele=None):
 
 
 def verifier():
-    """Au lancement du capteur : Ollama répond et le modèle est téléchargé ?
+    """Au lancement du capteur : Ollama répond, le modèle est là ET il tourne ?
 
     Sans ce contrôle, le capteur joue toute la partie puis vote au hasard.
+    L'essai de génération charge aussi le modèle en mémoire : le premier vote
+    de la partie n'attend plus ce chargement.
     Renvoie None si tout va bien, sinon le problème et la commande pour le régler.
     """
+    reinstaller = "Réinstaller : curl -fsSL https://ollama.com/install.sh | sh"
     try:
         modeles = [m["name"] for m in requests.get(f"{URL}/api/tags", timeout=5).json()["models"]]
     except requests.RequestException:
-        return (f"Ollama ne répond pas sur {URL}. Installer : "
-                "curl -fsSL https://ollama.com/install.sh | sh")
+        return f"Ollama ne répond pas sur {URL}. {reinstaller}"
     if MODELE not in modeles:
         return (f"le modèle {MODELE} n'est pas téléchargé (présents : {modeles or 'aucun'}). "
                 f"Faire : ollama pull {MODELE}")
+    # Une installation incomplète d'Ollama liste bien les modèles mais ne peut
+    # pas les exécuter (ex : « llama-server binary not found »).
+    try:
+        essai = requests.post(f"{URL}/api/generate", timeout=DELAI, json={
+            "model": MODELE, "prompt": "ok", "stream": False, "think": False,
+            "options": {"num_predict": 1, "num_thread": 3}})
+    except requests.RequestException as e:
+        return f"Ollama ne répond pas pendant l'essai du modèle ({e})."
+    if not essai.ok:
+        return (f"Ollama n'arrive pas à exécuter {MODELE} ({essai.status_code} : "
+                f"{essai.text.strip()[:200]}). Installation d'Ollama incomplète ? "
+                f"Vérifier la place libre (df -h /), puis {reinstaller}")
     return None
 
 
