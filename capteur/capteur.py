@@ -42,14 +42,14 @@ class Capteur:
     # ---------- Réception (thread réseau de paho) ----------
     def traiter_message(self, topic, donnees):
         if topic == topics.role(self.mon_id):
+            # Pas d'affichage ici : le rôle n'est montré qu'au départ de la partie,
+            # pour qu'un vieux rôle resté sur le broker ne passe pas pour le tirage.
             with self.verrou:
                 self.role = donnees.get("role", "normal")
-            self.log(f"rôle reçu : {self.role}")
         elif topic == topics.JEU_START:
             with self.verrou:
                 self.partie = donnees.get("partie")
                 self.historique = {}
-            self.log(f"start de la partie {self.partie}")
             self.depart.set()
         elif topic == topics.JEU_RESULTAT:
             if donnees.get("partie") == self.partie:
@@ -83,6 +83,7 @@ class Capteur:
     def jouer(self):
         with self.verrou:
             partie, role = self.partie, self.role
+        self.log(f"=== partie {partie} : mon rôle = {role.upper()} ===")
         debut = time.monotonic()
         for tour in range(1, NB_TOURS + 1):
             with self.verrou:
