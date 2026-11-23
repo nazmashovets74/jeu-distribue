@@ -51,8 +51,8 @@ def construire_prompt(mon_id, historique, candidats):
         "- Un capteur honnête publie la vraie température de sa ville. Les villes sont "
         "proches, donc les températures se ressemblent sans être identiques, et une vraie "
         "température ne change presque pas en quelques secondes.\n"
-        "- Un seul capteur est l'espion : il invente ses valeurs, à environ 10 % de "
-        "celles des autres, pour passer inaperçu.\n\n"
+        "- Un seul capteur est l'espion : il invente ses valeurs, à 5 à 10 % de "
+        "celles des autres (au moins 0,5 °C), et il les change à chaque tour.\n\n"
         f"Tu es le capteur {mon_id}. Voici les mesures reçues (°C, dans l'ordre des tours) :\n"
         + "\n".join(lignes)
         + f"\n\nQuel capteur parmi {', '.join(candidats)} est l'espion ? "
