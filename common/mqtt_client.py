@@ -6,12 +6,20 @@ import paho.mqtt.client as mqtt
 from config import BROKER_HOST, BROKER_PORT
 
 
-def creer_client(client_id, on_message, abonnements):
+def creer_client(client_id, on_message, abonnements, topic_etat=None, infos_etat=None):
     """client_id doit être UNIQUE sur le broker (ex: 'serveur', 'capteur-1').
 
     on_message(topic, donnees) ne reçoit que des objets JSON (dict).
+
+    topic_etat (optionnel) : le client y annonce {"etat": "en ligne", **infos_etat}
+    (message retenu) à chaque connexion. Si le programme meurt ou perd le réseau,
+    le broker y publie lui-même "hors ligne" (testament MQTT). Le site web s'en
+    sert pour savoir qui est lancé. Utiliser deconnecter() pour un arrêt propre.
     """
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
+    client.topic_etat = topic_etat
+    if topic_etat:
+        client.will_set(topic_etat, json.dumps({"etat": "hors ligne"}), qos=1, retain=True)
 
     def _on_connect(client, userdata, flags, reason_code, properties):
         if reason_code.is_failure:
@@ -20,6 +28,8 @@ def creer_client(client_id, on_message, abonnements):
         print(f"[{client_id}] connecté au broker")
         for topic in abonnements:
             client.subscribe(topic, qos=1)
+        if topic_etat:
+            publier(client, topic_etat, {"etat": "en ligne", **(infos_etat or {})}, retain=True)
 
     def _on_message(client, userdata, msg):
         # Ce code tourne dans le thread réseau de paho : une exception qui
@@ -57,4 +67,17 @@ def creer_client(client_id, on_message, abonnements):
 
 
 def publier(client, topic, donnees, retain=False):
-    client.publish(topic, json.dumps(donnees), qos=1, retain=retain)
+    return client.publish(topic, json.dumps(donnees), qos=1, retain=retain)
+
+
+def deconnecter(client):
+    """Arrêt propre : annonce "hors ligne" (le testament n'est envoyé que sur
+    coupure brutale), puis ferme la connexion et le thread réseau."""
+    if client.topic_etat and client.is_connected():
+        info = publier(client, client.topic_etat, {"etat": "hors ligne"}, retain=True)
+        try:
+            info.wait_for_publish(timeout=2)
+        except (RuntimeError, ValueError):
+            pass
+    client.disconnect()
+    client.loop_stop()

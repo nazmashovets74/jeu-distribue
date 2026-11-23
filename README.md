@@ -41,15 +41,47 @@ tout seul et marche depuis n'importe quel dossier.
 
 | Topic | Sens | Contenu |
 |---|---|---|
-| `iot/role/<id>` (retain) | serveur → capteur | `{"role": "normal" \| "espion"}` |
+| `iot/role/<id>` | serveur → capteur | `{"role": "normal" \| "espion"}` |
 | `iot/jeu/start` | serveur → tous | `{"partie": n}` |
 | `iot/capteurs/<id>/temperature` | capteur → tous | `{"id", "ville", "partie", "tour", "temperature"}` |
 | `iot/votes/<id>` | capteur → serveur | `{"id", "partie", "suspect", "strategie"}` |
 | `iot/jeu/resultat` | serveur → tous | `{"partie", "espion", "designe", "votes", "strategies", "gagnant"}` |
+| `iot/capteurs/<id>/etat` (retain) | capteur → site | `{"etat": "en ligne" \| "hors ligne", "ville", "strategie", "erreur"}`, testament MQTT si coupure |
+| `iot/serveur/etat` (retain) | serveur → site | `{"etat", "mode": "web" \| "clavier"}` |
+| `iot/capteurs/<id>/strategie` | site → capteur | `{"strategie", "par"}`, appliquée entre deux parties |
+| `iot/jeu/lancer` | site → serveur | `{"prets": [...]}`, seulement en mode `--web` |
 
 Le serveur et les capteurs ignorent les températures et les votes dont `partie`
 n'est pas la partie en cours. Ainsi, un message en retard ne compte jamais
 dans la partie suivante.
+
+## Site web (suivre les parties, « Prêt », stratégies)
+
+Un site Flask, en français, sur RPi A à côté du serveur. Il suit tout en direct
+(mesures, votes, résultat, journal, historique de `docs/parties.jsonl`) et ne
+s'abonne pas à `iot/role/#` : l'espion n'apparaît qu'au résultat.
+
+```bash
+venv/bin/pip install -r requirements.txt              # Flask, une fois
+venv/bin/python -m web.comptes ajouter nazar --capteurs 1,4   # un compte par RPi
+venv/bin/python -m web.comptes ajouter <nom> --capteurs 2
+venv/bin/python -m web.comptes ajouter <nom> --capteurs 3
+./jeu.sh web                                          # http://rpi-a.local:5000
+./jeu.sh serveur --web                                # au lieu de ./jeu.sh serveur
+```
+
+- Tout le monde peut regarder la page ; se connecter permet de choisir la
+  stratégie de **ses** capteurs et de cliquer « Je suis prêt ».
+- La partie démarre seule quand le serveur tourne en `--web`, que les 4 capteurs
+  sont en ligne et que tous les joueurs sont prêts. Il faut se remettre prêt
+  pour la partie suivante.
+- Une stratégie choisie sur le site s'applique entre deux parties ; si elle
+  est impossible (ex. modèle Ollama absent), le capteur garde l'ancienne et le
+  site affiche pourquoi.
+- Les comptes (`web/comptes.json`, mots de passe hachés) et la clé des sessions
+  restent sur la machine, hors git.
+- Sans `--web`, tout marche comme avant (Entrée ou `./jeu.sh serveur 10`).
+- Tester seul sur sa machine avec un broker local : `BROKER_HOST=localhost ./jeu.sh ...`
 
 ## Tester le serveur sans capteurs
 

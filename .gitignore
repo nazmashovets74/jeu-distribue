@@ -219,3 +219,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 venv/
+
+# Site web : comptes des joueurs et clé des sessions (propres à chaque machine)
+web/comptes.json
+web/.cle_secrete

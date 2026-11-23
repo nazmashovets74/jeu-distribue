@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Le jeu de l'espion</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="barre">
+    <div class="marque">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>Le jeu de l'espion</h1>
+        <p class="sous-titre">4 capteurs de température · MQTT · Savoie</p>
+      </div>
+    </div>
+    <div class="barre-droite">
+      <span id="direct" class="direct" title="Connexion au flux en direct">connexion…</span>
+      {% if joueur %}
+        <span class="moi">Connecté : <strong>{{ joueur }}</strong></span>
+        <form method="post" action="{{ url_for('deconnexion') }}">
+          <button class="bouton discret" type="submit">Déconnexion</button>
+        </form>
+      {% else %}
+        <a class="bouton" href="{{ url_for('connexion') }}">Se connecter</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="etat-partie" aria-live="polite">
+      <div>
+        <p class="etiquette" id="partie-numero">Partie</p>
+        <h2 id="phase">En attente…</h2>
+      </div>
+      <ol class="tours" id="tours" aria-label="Avancement des tours"></ol>
+      <div class="serveur" id="serveur"></div>
+    </section>
+
+    <section id="resultat" class="resultat" hidden></section>
+
+    <div class="colonnes">
+      <div class="colonne-principale">
+        <section>
+          <h3 class="titre-section">Capteurs</h3>
+          <div class="grille-capteurs" id="capteurs"></div>
+        </section>
+      </div>
+
+      <aside class="colonne-laterale">
+        <section class="carte">
+          <h3 class="titre-section">Salle d'attente</h3>
+          <ul class="joueurs" id="joueurs"></ul>
+          {% if joueur %}
+            <button id="bouton-pret" class="bouton principal large" type="button">Je suis prêt</button>
+            <p id="erreur-pret" class="erreur" hidden></p>
+          {% else %}
+            <p class="aide"><a href="{{ url_for('connexion') }}">Connectez-vous</a> pour vous déclarer prêt.</p>
+          {% endif %}
+          <ul class="conditions" id="conditions"></ul>
+          <p class="aide">La partie démarre toute seule quand tout est vert.</p>
+        </section>
+
+        <section class="carte">
+          <div class="titre-ligne">
+            <h3 class="titre-section">Journal en direct</h3>
+            <label class="case"><input type="checkbox" id="masquer-mesures"> masquer les mesures</label>
+          </div>
+          <ol class="journal" id="journal"></ol>
+        </section>
+      </aside>
+    </div>
+
+    <section class="carte">
+      <div class="titre-ligne">
+        <h3 class="titre-section">Historique des parties</h3>
+        <p class="score" id="score"></p>
+      </div>
+      <div class="defile">
+        <table class="historique">
+          <thead><tr><th>Date</th><th>Partie</th><th>Espion</th><th>Désigné</th><th>Votes</th><th>Gagnant</th></tr></thead>
+          <tbody id="historique"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    window.JOUEUR = {{ joueur|tojson }};
+    window.MES_CAPTEURS = {{ capteurs|tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

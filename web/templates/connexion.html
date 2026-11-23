@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion · Le jeu de l'espion</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="centre">
+  <main class="carte connexion">
+    <div class="marque">
+      <span class="logo" aria-hidden="true"></span>
+      <h1>Le jeu de l'espion</h1>
+    </div>
+    <p class="aide">Connectez-vous avec le compte de votre Raspberry Pi pour vous déclarer prêt.</p>
+    {% if aucun_compte %}
+      <p class="erreur">Aucun compte n'existe encore. Sur la machine du site :<br>
+        <code>venv/bin/python -m web.comptes ajouter &lt;nom&gt; --capteurs 2</code></p>
+    {% endif %}
+    {% if erreur %}<p class="erreur">{{ erreur }}</p>{% endif %}
+    <form method="post" class="formulaire">
+      <label>Nom<input name="nom" autocomplete="username" required autofocus></label>
+      <label>Mot de passe<input name="mot_de_passe" type="password" autocomplete="current-password" required></label>
+      <button class="bouton principal large" type="submit">Se connecter</button>
+    </form>
+    <p class="aide"><a href="{{ url_for('accueil') }}">← Regarder sans se connecter</a></p>
+  </main>
+</body>
+</html>

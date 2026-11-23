@@ -167,6 +167,45 @@ cd ~/jeu-distribue && ./jeu.sh trafic
 
 ---
 
+## 6.1. Играть через сайт (вместо Entrée)
+
+Сайт работает на RPi A и показывает всё в реальном времени: температуры, туры,
+голоса, результат, журнал и историю партий. Шпион виден только после результата.
+
+**Один раз на RPi A** (делает Nazar): создать по аккаунту на каждую RPi.
+
+```bash
+cd ~/jeu-distribue
+venv/bin/pip install -r requirements.txt
+venv/bin/python -m web.comptes ajouter nazar --capteurs 1,4
+venv/bin/python -m web.comptes ajouter <имя_B> --capteurs 2
+venv/bin/python -m web.comptes ajouter <имя_C> --capteurs 3
+```
+
+**Запуск партии через сайт.** Датчики запускаются как обычно (раздел 6), а на RPi A
+вместо `./jeu.sh serveur`:
+
+```bash
+cd ~/jeu-distribue && ./jeu.sh web
+```
+
+```bash
+cd ~/jeu-distribue && ./jeu.sh serveur --web
+```
+
+Потом каждый открывает в браузере **http://rpi-a.local:5000**, входит в свой
+аккаунт и:
+1. на карточке своего датчика выбирает **стратегию** (`mediane`, `stabilite`,
+   `aleatoire`, `llm`). Применяется между партиями, перезапускать датчик не нужно;
+2. нажимает **« Je suis prêt »**.
+
+Когда все трое готовы, все 4 датчика в сети и сервер запущен с `--web`, партия
+стартует сама. Для следующей партии снова нажать « Je suis prêt ».
+
+Смотреть сайт можно и без входа (например, преподавателю).
+
+---
+
 ## 7. Что вы увидите в терминале датчика
 
 ```
@@ -339,6 +378,8 @@ cd ~/jeu-distribue && ./jeu.sh serveur 10
 | `stratégie llm impossible : le modèle qwen3:1.7b n'est pas téléchargé` при запуске | На этой RPi нет нужной модели | Выполнить команду из сообщения: `ollama pull qwen3:1.7b` |
 | `stratégie llm impossible : Ollama ne répond pas` при запуске | Ollama не установлен или не запущен | Раздел 9, затем `ollama list` |
 | `stratégie llm en échec (Ollama 404 ...)`, голос `aleatoire (échec llm)` | Модель пропала во время игры или старый код | `ollama list`, `git pull` |
+| На сайте « Je suis prêt » пишет `votre capteur 2 est hors ligne` | Ваш датчик не запущен или подключён к другому брокеру | `./jeu.sh capteur 2` |
+| Все готовы, но партия не стартует | Сервер запущен без `--web` | Ctrl+C, затем `./jeu.sh serveur --web` |
 | `invalid choice` при запуске | Опечатка в id или стратегии | id: 1–4; стратегии: `mediane`, `stabilite`, `aleatoire`, `llm` |
 
 ---
