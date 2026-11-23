@@ -1,4 +1,8 @@
-BROKER_HOST = "rpi-a.local"
+import os
+
+# Le broker est sur RPi A. Pour tester sur sa propre machine avec un broker local :
+#   BROKER_HOST=localhost ./jeu.sh ...
+BROKER_HOST = os.environ.get("BROKER_HOST", "rpi-a.local")
 BROKER_PORT = 1883
 NB_TOURS = 5
 INTERVALLE = 5  # secondes

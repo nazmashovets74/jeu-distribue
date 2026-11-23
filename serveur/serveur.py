@@ -2,6 +2,7 @@
 
     ./jeu.sh serveur        une partie à chaque Entrée
     ./jeu.sh serveur 10     10 parties d'affilée
+    ./jeu.sh serveur --web  une partie quand tous les joueurs sont « Prêt » sur le site
 """
 import argparse
 import json
@@ -14,9 +15,9 @@ from datetime import datetime
 
 from config import CAPTEURS, NB_TOURS, INTERVALLE
 from common import topics
-from common.mqtt_client import creer_client, publier
+from common.mqtt_client import creer_client, deconnecter, publier
 
-IDS = list(CAPTEURS.keys())                 # ["1", "2", "3"]
+IDS = list(CAPTEURS.keys())                 # ["1", "2", "3", "4"]
 MAJORITE = len(IDS) // 2 + 1                # 3 sur 4
 DELAI_VOTES = NB_TOURS * INTERVALLE + 60    # attente max des votes (s), le LLM est lent
 PAUSE = 5                                   # entre deux parties d'affilée (s)
@@ -41,15 +42,19 @@ def compter_votes(votes, espion):
 
 
 class Serveur:
-    def __init__(self):
+    def __init__(self, mode="clavier"):
         # Partagé avec le thread réseau -> toujours lu/écrit sous le verrou.
         self.partie = None                      # numéro de la partie en cours, None entre deux
         self.votes = {}                         # {votant: {"suspect": id, "strategie": nom}}
         self.temperatures = {}                  # {id_capteur: [valeur du tour 1, 2, ...]}
         self.verrou = threading.Lock()
         self.tous_ont_vote = threading.Event()  # signal "tout le monde a voté"
-        self.client = creer_client("serveur", self.traiter_message,
-                                   [topics.TOUS_VOTES, topics.TOUTES_TEMPERATURES])
+        self.lancement = threading.Event()      # mode --web : le site demande une partie
+        abonnements = [topics.TOUS_VOTES, topics.TOUTES_TEMPERATURES]
+        if mode == "web":
+            abonnements.append(topics.JEU_LANCER)
+        self.client = creer_client("serveur", self.traiter_message, abonnements,
+                                   topic_etat=topics.ETAT_SERVEUR, infos_etat={"mode": mode})
 
     # ================= Une partie, étape par étape =================
     def jouer(self, partie):
@@ -115,6 +120,10 @@ class Serveur:
 
     # ================= Réception (thread réseau de paho) =================
     def traiter_message(self, topic, donnees):
+        if topic == topics.JEU_LANCER:
+            print(f"  le site demande une partie (prêts : {', '.join(donnees.get('prets', []))})")
+            self.lancement.set()
+            return
         id_capteur = topics.id_depuis_topic(topic)
         if topic == topics.vote(id_capteur):
             self.noter_vote(id_capteur, donnees)
@@ -165,14 +174,28 @@ def main():
     parser = argparse.ArgumentParser(description="Serveur du jeu de l'espion")
     parser.add_argument("parties", type=int, nargs="?", default=0,
                         help="nombre de parties d'affilée (sans : une partie à chaque Entrée)")
-    nb_parties = parser.parse_args().parties
+    parser.add_argument("--web", action="store_true",
+                        help="lancer les parties depuis le site (quand tous sont « Prêt »)")
+    args = parser.parse_args()
+    nb_parties = args.parties
 
-    serveur = Serveur()
+    serveur = Serveur(mode="web" if args.web else "clavier")
     serveur.client.loop_start()   # réseau dans un thread à part
     time.sleep(1)                 # laisser le temps de s'abonner aux votes
     serveur.effacer_anciens_roles()
     try:
-        if nb_parties:
+        if args.web:
+            partie = 1
+            while True:
+                # Une demande arrivée pendant la partie précédente ne compte pas.
+                serveur.lancement.clear()
+                print(f"\nPartie {partie} : en attente des joueurs sur le site "
+                      "(tous « Prêt »)... Ctrl+C pour quitter")
+                while not serveur.lancement.wait(timeout=1):   # timeout : Ctrl+C reste actif
+                    pass
+                serveur.jouer(partie)
+                partie += 1
+        elif nb_parties:
             for partie in range(1, nb_parties + 1):
                 serveur.jouer(partie)
                 time.sleep(PAUSE)
@@ -185,8 +208,7 @@ def main():
     except (KeyboardInterrupt, EOFError):
         print("\nArrêt du serveur")
     finally:
-        serveur.client.loop_stop()
-        serveur.client.disconnect()
+        deconnecter(serveur.client)
 
 
 if __name__ == "__main__":
